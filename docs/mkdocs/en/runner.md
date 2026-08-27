@@ -658,6 +658,31 @@ Runner enforces the earlier of:
 - the parent context deadline (if any)
 - `MaxRunDuration` (if set)
 
+#### Execution Trace Default (opt-in)
+
+Execution trace recording is disabled by default. A service that wants every
+run on a specific Runner to produce an execution trace can enable it once when
+constructing that Runner:
+
+```go
+r := runner.NewRunner("my-app", myAgent,
+    runner.WithExecutionTraceEnabled(true),
+)
+```
+
+This is a Runner-local default; it does not affect other Runners or telemetry
+integrations in the process. A single run can override the default:
+
+```go
+eventChan, err := r.Run(
+    ctx,
+    userID,
+    sessionID,
+    message,
+    agent.WithExecutionTraceEnabled(false),
+)
+```
+
 #### Persist Interrupted Assistant Text (opt-in)
 
 By default, cancelling a streaming run does not write partial assistant chunks

@@ -23,13 +23,13 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/internal/modelcontext"
 	"trpc.group/trpc-go/trpc-agent-go/internal/state/summaryview"
 	itelemetry "trpc.group/trpc-go/trpc-agent-go/internal/telemetry"
+	itrace "trpc.group/trpc-go/trpc-agent-go/internal/trace"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/prompt"
 	"trpc.group/trpc-go/trpc-agent-go/session"
 	isummarycontext "trpc.group/trpc-go/trpc-agent-go/session/internal/summarycontext"
 	isummaryscope "trpc.group/trpc-go/trpc-agent-go/session/internal/summaryscope"
-	"trpc.group/trpc-go/trpc-agent-go/telemetry/trace"
 )
 
 var _ SessionSummarizer = (*sessionSummarizer)(nil)
@@ -1195,16 +1195,6 @@ func (s *sessionSummarizer) generateSummary(
 	if s.model != nil {
 		modelName = s.model.Info().Name
 	}
-	_, span := trace.Tracer.Start(ctx, itelemetry.NewChatSpanName(modelName))
-	defer span.End()
-
-	request, mode, err := s.buildSummaryRequest(ctx, source.input)
-	if err != nil {
-		err = fmt.Errorf("failed to build summary request: %w", err)
-		s.emitReport(ctx, err)
-		return ctx, "", err
-	}
-
 	invocation, ok := agent.InvocationFromContext(ctx)
 	if !ok || invocation == nil {
 		invocation = agent.NewInvocation(
@@ -1219,6 +1209,20 @@ func (s *sessionSummarizer) generateSummary(
 		if invocation.Session == nil && sess != nil {
 			invocation.Session = sess
 		}
+	}
+	spanCtx := agent.NewInvocationContext(ctx, invocation)
+	_, span, _ := itrace.StartSpan(
+		spanCtx,
+		invocation,
+		itelemetry.NewChatSpanName(modelName),
+	)
+	defer span.End()
+
+	request, mode, err := s.buildSummaryRequest(ctx, source.input)
+	if err != nil {
+		err = fmt.Errorf("failed to build summary request: %w", err)
+		s.emitReport(ctx, err)
+		return ctx, "", err
 	}
 
 	// Get or create timing info from invocation (only record first LLM call).

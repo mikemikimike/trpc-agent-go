@@ -628,6 +628,30 @@ Runner 会取以下两者中较早的时间作为真正的超时上限：
 - 父 `ctx` 的 deadline（如果存在）
 - `MaxRunDuration`（如果设置了）
 
+#### ExecutionTrace 默认策略（显式开启）
+
+ExecutionTrace 默认关闭。如果一个服务希望某个 Runner 的每次运行都生成
+ExecutionTrace，可以在构造该 Runner 时统一开启：
+
+```go
+r := runner.NewRunner("my-app", myAgent,
+    runner.WithExecutionTraceEnabled(true),
+)
+```
+
+这是 Runner 局部默认值，不会影响进程中的其他 Runner 或 telemetry 集成。单次
+运行仍可覆盖该默认值：
+
+```go
+eventChan, err := r.Run(
+    ctx,
+    userID,
+    sessionID,
+    message,
+    agent.WithExecutionTraceEnabled(false),
+)
+```
+
 #### 持久化被中断的 Assistant 文本（显式开启）
 
 默认情况下，取消一个 streaming run 不会把 partial assistant chunk 写入

@@ -43,12 +43,12 @@ import (
 	itool "trpc.group/trpc-go/trpc-agent-go/internal/tool"
 	"trpc.group/trpc-go/trpc-agent-go/internal/toolcall"
 	"trpc.group/trpc-go/trpc-agent-go/internal/toolretry"
+	itrace "trpc.group/trpc-go/trpc-agent-go/internal/trace"
 	"trpc.group/trpc-go/trpc-agent-go/internal/tracecapture"
 	"trpc.group/trpc-go/trpc-agent-go/internal/util"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/session"
-	"trpc.group/trpc-go/trpc-agent-go/telemetry/trace"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
 
@@ -563,8 +563,7 @@ func startNodeSpan(ctx context.Context, spanName string) (context.Context, otelt
 	if tracingDisabledInContext(ctx) {
 		return ctx, noop.Span{}, false
 	}
-	ctx, span := trace.Tracer.Start(ctx, spanName)
-	return ctx, span, true
+	return itrace.StartSpan(ctx, nil, spanName)
 }
 
 // startNodeSpanForInvocation returns a no-op span when tracing is disabled for the invocation or context.
@@ -572,8 +571,7 @@ func startNodeSpanForInvocation(ctx context.Context, invocation *agent.Invocatio
 	if tracingDisabled(invocation) || tracingDisabledInContext(ctx) {
 		return ctx, noop.Span{}, false
 	}
-	ctx, span := trace.Tracer.Start(ctx, spanName)
-	return ctx, span, true
+	return itrace.StartSpan(ctx, invocation, spanName)
 }
 
 func workflowTypeFromNodeType(nodeType NodeType) itelemetry.WorkflowType {
@@ -605,7 +603,10 @@ func executeNodeWithWorkflowTrace(
 	if tracingDisabledInContext(ctx) {
 		return function(ctx, state)
 	}
-	ctx, span := trace.Tracer.Start(ctx, itelemetry.NewWorkflowSpanName(fmt.Sprintf("execute_function_node %s", id)))
+	ctx, span, _ := startNodeSpan(
+		ctx,
+		itelemetry.NewWorkflowSpanName(fmt.Sprintf("execute_function_node %s", id)),
+	)
 	workflow := &itelemetry.Workflow{
 		Name:    fmt.Sprintf("execute_function_node %s", id),
 		ID:      id,

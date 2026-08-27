@@ -32,11 +32,11 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/internal/state/barrier"
 	istructure "trpc.group/trpc-go/trpc-agent-go/internal/structure"
 	itelemetry "trpc.group/trpc-go/trpc-agent-go/internal/telemetry"
+	itrace "trpc.group/trpc-go/trpc-agent-go/internal/trace"
 	"trpc.group/trpc-go/trpc-agent-go/internal/tracecapture"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/session"
-	"trpc.group/trpc-go/trpc-agent-go/telemetry/trace"
 )
 
 const (
@@ -297,8 +297,9 @@ func (e *Executor) Execute(
 		startedSpan := false
 		if !invocation.RunOptions.DisableTracing {
 			workflowName := "execute_graph " + invocation.AgentName
-			ctx, span = trace.Tracer.Start(
+			ctx, span, _ = itrace.StartSpan(
 				ctx,
+				invocation,
 				itelemetry.NewWorkflowSpanName(workflowName),
 			)
 			startedSpan = true

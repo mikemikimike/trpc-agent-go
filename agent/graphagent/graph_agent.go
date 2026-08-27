@@ -26,10 +26,10 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/internal/flow/processor"
 	"trpc.group/trpc-go/trpc-agent-go/internal/state/barrier"
 	itelemetry "trpc.group/trpc-go/trpc-agent-go/internal/telemetry"
+	itrace "trpc.group/trpc-go/trpc-agent-go/internal/trace"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	semconvtrace "trpc.group/trpc-go/trpc-agent-go/telemetry/semconv/trace"
-	"trpc.group/trpc-go/trpc-agent-go/telemetry/trace"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
 
@@ -180,7 +180,11 @@ func (ga *GraphAgent) runWithBarrier(ctx context.Context, invocation *agent.Invo
 	stream := resolveGraphAgentStream(invocation)
 	tracingEnabled := !invocation.RunOptions.DisableTracing
 	if tracingEnabled {
-		ctx, span = trace.Tracer.Start(ctx, fmt.Sprintf("%s %s", itelemetry.OperationInvokeAgent, invocation.AgentName))
+		ctx, span, _ = itrace.StartSpan(
+			ctx,
+			invocation,
+			fmt.Sprintf("%s %s", itelemetry.OperationInvokeAgent, invocation.AgentName),
+		)
 		itelemetry.TraceBeforeInvokeAgent(
 			span,
 			invocation,

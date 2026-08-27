@@ -14,6 +14,7 @@ package telemetry
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -301,6 +302,12 @@ func TraceToolCall(span trace.Span, sess *session.Session, declaration *tool.Dec
 			attribute.String(semconvtrace.KeyGenAIConversationID, sess.ID),
 			attribute.String(semconvtrace.KeyRunnerUserID, sess.UserID),
 		)
+		if appName := strings.TrimSpace(sess.AppName); appName != "" {
+			span.SetAttributes(attribute.String(
+				semconvtrace.KeyTRPCAgentGoAppName,
+				appName,
+			))
+		}
 	}
 
 	// args is json-encoded.
@@ -423,6 +430,12 @@ func setInvokeAgentInputMessageAttributes(span trace.Span, msg model.Message) {
 
 func beforeInvokeAgentAttributes(invoke *agent.Invocation) []attribute.KeyValue {
 	var attrs []attribute.KeyValue
+	if appName := invocationAppName(invoke); appName != "" {
+		attrs = append(attrs, attribute.String(
+			semconvtrace.KeyTRPCAgentGoAppName,
+			appName,
+		))
+	}
 	agentName, agentID := resolveInvocationAgentIdentity(invoke)
 	if agentName != "" {
 		attrs = append(attrs, attribute.String(semconvtrace.KeyGenAIAgentName, agentName))
@@ -578,6 +591,12 @@ func buildInvocationAttributes(invoke *agent.Invocation) []attribute.KeyValue {
 	attrs := []attribute.KeyValue{
 		attribute.String(semconvtrace.KeyInvocationID, invoke.InvocationID),
 	}
+	if appName := invocationAppName(invoke); appName != "" {
+		attrs = append(attrs, attribute.String(
+			semconvtrace.KeyTRPCAgentGoAppName,
+			appName,
+		))
+	}
 
 	if invoke.Session != nil {
 		attrs = append(attrs,
@@ -591,6 +610,19 @@ func buildInvocationAttributes(invoke *agent.Invocation) []attribute.KeyValue {
 	}
 
 	return attrs
+}
+
+func invocationAppName(invoke *agent.Invocation) string {
+	if invoke == nil {
+		return ""
+	}
+	if appName := strings.TrimSpace(invoke.RunOptions.AppName); appName != "" {
+		return appName
+	}
+	if invoke.Session == nil {
+		return ""
+	}
+	return strings.TrimSpace(invoke.Session.AppName)
 }
 
 // buildRequestAttributes builds request-related attributes.
